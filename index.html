@@ -1,18 +1,18 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Elbow Plot Web App (Pure JS)</title>
-    <!-- No external libraries, pure vanilla JS -->
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
-        .container { max-width: 500px; margin: auto; }
+        .container { max-width: 1100px; margin: auto; display: flex; flex-direction: row; gap: 30px; align-items: flex-start; }
         label, input { display: block; margin-bottom: 10px; }
         canvas { max-width: 100%; border: 1px solid #ccc; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <div class="container" style="display: flex; flex-direction: row; gap: 30px; align-items: flex-start;">
+    <div class="container">
         <div style="flex: 1;">
             <h2>Elbow Plot for KMeans Clustering (Pure JS)</h2>
             <label for="clusters">Max number of clusters:</label>
@@ -48,7 +48,6 @@
 
     // Simple k-means implementation
     function kmeans(data, k, maxIter=100) {
-        // Randomly initialize centroids
         let centroids = [];
         let used = new Set();
         while (centroids.length < k) {
@@ -85,7 +84,6 @@
                     newCentroids[j][0] /= counts[j];
                     newCentroids[j][1] /= counts[j];
                 } else {
-                    // Reinitialize empty cluster
                     newCentroids[j] = [...data[Math.floor(Math.random() * data.length)]];
                 }
             }
@@ -114,7 +112,6 @@
     }
 
     // Draw elbow plot
-    // Draw elbow plot using vanilla JS
     function drawElbowPlot(K, inertias) {
         const canvas = document.getElementById('elbowPlot');
         const ctx = canvas.getContext('2d');
@@ -176,7 +173,7 @@
         }
     }
 
-    // Draw cluster scatter plot using vanilla JS
+    // Draw cluster scatter plot
     function drawClusterPlot(data, labels, k) {
         const canvas = document.getElementById('clusterPlot');
         const ctx = canvas.getContext('2d');
