@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elbow Plot Web App</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 400px; margin: auto; }
+        label, input { display: block; margin-bottom: 10px; }
+        img { max-width: 100%; border: 1px solid #ccc; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Elbow Plot for KMeans Clustering</h2>
+        <label for="clusters">Max number of clusters:</label>
+        <input type="number" id="clusters" min="2" max="15" value="10">
+        <button onclick="updatePlot()">Update Plot</button>
+        <img id="elbowPlot" src="/elbow?max_clusters=10" alt="Elbow Plot">
+    </div>
+    <script>
+        function updatePlot() {
+            var k = document.getElementById('clusters').value;
+            document.getElementById('elbowPlot').src = '/elbow?max_clusters=' + k + '&_=' + new Date().getTime();
+        }
+    </script>
+</body>
+</html>

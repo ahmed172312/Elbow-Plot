@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Elbow Plot Web App (Pure JS)</title>
+    <!-- No external libraries, pure vanilla JS -->
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 500px; margin: auto; }
+        label, input { display: block; margin-bottom: 10px; }
+        canvas { max-width: 100%; border: 1px solid #ccc; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container" style="display: flex; flex-direction: row; gap: 30px; align-items: flex-start;">
+        <div style="flex: 1;">
+            <h2>Elbow Plot for KMeans Clustering (Pure JS)</h2>
+            <label for="clusters">Max number of clusters:</label>
+            <input type="number" id="clusters" min="2" max="15" value="10">
+            <button onclick="updatePlot()">Update Plot</button>
+            <canvas id="elbowPlot" width="900" height="675"></canvas>
+        </div>
+        <div style="flex: 1;">
+            <h2>K-Means Clusters (Scatter)</h2>
+            <canvas id="clusterPlot" width="900" height="675"></canvas>
+        </div>
+    </div>
+    <script>
+    // Generate random 2D data (like make_blobs)
+    function generateData(n, centers) {
+        let data = [];
+        let centerPoints = [];
+        for (let i = 0; i < centers; i++) {
+            centerPoints.push([
+                Math.random() * 10 + 5,
+                Math.random() * 10 + 5
+            ]);
+        }
+        for (let i = 0; i < n; i++) {
+            let c = centerPoints[Math.floor(Math.random() * centers)];
+            data.push([
+                c[0] + Math.random() * 2 - 1,
+                c[1] + Math.random() * 2 - 1
+            ]);
+        }
+        return data;
+    }
+
+    // Simple k-means implementation
+    function kmeans(data, k, maxIter=100) {
+        // Randomly initialize centroids
+        let centroids = [];
+        let used = new Set();
+        while (centroids.length < k) {
+            let idx = Math.floor(Math.random() * data.length);
+            if (!used.has(idx)) {
+                centroids.push([...data[idx]]);
+                used.add(idx);
+            }
+        }
+        let labels = new Array(data.length).fill(0);
+        for (let iter = 0; iter < maxIter; iter++) {
+            // Assign labels
+            for (let i = 0; i < data.length; i++) {
+                let minDist = Infinity, minIdx = 0;
+                for (let j = 0; j < k; j++) {
+                    let d = Math.pow(data[i][0] - centroids[j][0], 2) + Math.pow(data[i][1] - centroids[j][1], 2);
+                    if (d < minDist) {
+                        minDist = d;
+                        minIdx = j;
+                    }
+                }
+                labels[i] = minIdx;
+            }
+            // Update centroids
+            let newCentroids = Array.from({length: k}, () => [0, 0]);
+            let counts = new Array(k).fill(0);
+            for (let i = 0; i < data.length; i++) {
+                newCentroids[labels[i]][0] += data[i][0];
+                newCentroids[labels[i]][1] += data[i][1];
+                counts[labels[i]]++;
+            }
+            for (let j = 0; j < k; j++) {
+                if (counts[j] > 0) {
+                    newCentroids[j][0] /= counts[j];
+                    newCentroids[j][1] /= counts[j];
+                } else {
+                    // Reinitialize empty cluster
+                    newCentroids[j] = [...data[Math.floor(Math.random() * data.length)]];
+                }
+            }
+            // Check for convergence
+            let converged = true;
+            for (let j = 0; j < k; j++) {
+                if (Math.abs(newCentroids[j][0] - centroids[j][0]) > 1e-4 || Math.abs(newCentroids[j][1] - centroids[j][1]) > 1e-4) {
+                    converged = false;
+                    break;
+                }
+            }
+            centroids = newCentroids;
+            if (converged) break;
+        }
+        return {centroids, labels};
+    }
+
+    // Compute inertia (sum of squared distances to closest centroid)
+    function computeInertia(data, centroids, labels) {
+        let inertia = 0;
+        for (let i = 0; i < data.length; i++) {
+            let c = centroids[labels[i]];
+            inertia += Math.pow(data[i][0] - c[0], 2) + Math.pow(data[i][1] - c[1], 2);
+        }
+        return inertia;
+    }
+
+    // Draw elbow plot
+    // Draw elbow plot using vanilla JS
+    function drawElbowPlot(K, inertias) {
+        const canvas = document.getElementById('elbowPlot');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Draw axes
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(90, 30);
+        ctx.lineTo(90, 630);
+        ctx.lineTo(870, 630);
+        ctx.stroke();
+        // Axis labels
+        ctx.font = '24px Arial';
+        ctx.fillStyle = '#222';
+        ctx.fillText('Number of clusters', 400, 665);
+        ctx.save();
+        ctx.translate(35, 350);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText('Inertia', 0, 0);
+        ctx.restore();
+        ctx.font = 'bold 28px Arial';
+        ctx.fillText('Elbow Plot', 370, 60);
+        // Find min/max for scaling
+        let minY = Math.min(...inertias), maxY = Math.max(...inertias);
+        let minX = Math.min(...K), maxX = Math.max(...K);
+        // Draw line
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let i = 0; i < K.length; i++) {
+            let x = 90 + (K[i] - minX) / (maxX - minX) * 780;
+            let y = 630 - (inertias[i] - minY) / (maxY - minY) * 570;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        // Draw points
+        ctx.fillStyle = 'blue';
+        for (let i = 0; i < K.length; i++) {
+            let x = 90 + (K[i] - minX) / (maxX - minX) * 780;
+            let y = 630 - (inertias[i] - minY) / (maxY - minY) * 570;
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        // Draw x axis ticks
+        ctx.font = '18px Arial';
+        ctx.fillStyle = '#222';
+        for (let i = 0; i < K.length; i++) {
+            let x = 90 + (K[i] - minX) / (maxX - minX) * 780;
+            ctx.fillText(K[i], x - 8, 655);
+        }
+        // Draw y axis ticks
+        for (let i = 0; i < 5; i++) {
+            let yVal = minY + (maxY - minY) * (1 - i / 4);
+            let y = 630 - (yVal - minY) / (maxY - minY) * 570;
+            ctx.fillText(yVal.toFixed(0), 30, y + 7);
+        }
+    }
+
+    // Draw cluster scatter plot using vanilla JS
+    function drawClusterPlot(data, labels, k) {
+        const canvas = document.getElementById('clusterPlot');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Find min/max for scaling
+        let xs = data.map(pt => pt[0]);
+        let ys = data.map(pt => pt[1]);
+        let minX = Math.min(...xs), maxX = Math.max(...xs);
+        let minY = Math.min(...ys), maxY = Math.max(...ys);
+        // Draw axes
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(90, 30);
+        ctx.lineTo(90, 630);
+        ctx.lineTo(870, 630);
+        ctx.stroke();
+        // Axis labels
+        ctx.font = '24px Arial';
+        ctx.fillStyle = '#222';
+        ctx.fillText('X1', 450, 665);
+        ctx.save();
+        ctx.translate(35, 350);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText('X2', 0, 0);
+        ctx.restore();
+        ctx.font = 'bold 28px Arial';
+        ctx.fillText('K-Means Clusters (k=' + k + ')', 320, 60);
+        // Colors for clusters
+        const colors = [
+            'red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'cyan', 'magenta', 'lime', 'teal', 'navy', 'gold', 'black'
+        ];
+        // Draw points
+        for (let i = 0; i < data.length; i++) {
+            let x = 90 + (data[i][0] - minX) / (maxX - minX) * 780;
+            let y = 630 - (data[i][1] - minY) / (maxY - minY) * 570;
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, 2 * Math.PI);
+            ctx.fillStyle = colors[labels[i] % colors.length];
+            ctx.fill();
+            ctx.strokeStyle = '#222';
+            ctx.stroke();
+        }
+    }
+
+    // Main update function
+    function updatePlot() {
+        let maxK = parseInt(document.getElementById('clusters').value);
+        let data = generateData(300, 5);
+        let K = [];
+        let inertias = [];
+        let bestLabels = null;
+        for (let k = 1; k <= maxK; k++) {
+            let {centroids, labels} = kmeans(data, k);
+            let inertia = computeInertia(data, centroids, labels);
+            K.push(k);
+            inertias.push(inertia);
+            if (k === maxK) bestLabels = labels;
+        }
+        drawElbowPlot(K, inertias);
+        drawClusterPlot(data, bestLabels, maxK);
+    }
+
+    // Initial plot
+    updatePlot();
+    </script>
+</body>
+</html>
